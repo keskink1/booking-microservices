@@ -1,0 +1,30 @@
+logging:
+  level:
+    sun.rmi.transport.tcp: error
+
+spring:
+  application:
+    name: "eurekaserver"
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+  endpoint:
+    health:
+      probes:
+        enabled: true

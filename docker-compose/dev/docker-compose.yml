@@ -1,0 +1,170 @@
+services:
+  bookingdb:
+    container_name: bookingdb
+    platform: linux/amd64
+    ports:
+      - 3330:3306
+    volumes:
+      - ./mysql-init/booking:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bookingdb
+    extends:
+      file: common-config.yml
+      service: base-mysql-network-config
+
+  notificationdb:
+    container_name: notificationdb
+    platform: linux/amd64
+    ports:
+      - 3331:3306
+    volumes:
+      - ./mysql-init/notification:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: notificationdb
+    extends:
+      file: common-config.yml
+      service: base-mysql-network-config
+
+
+  configserver:
+    image: "keskink/configserver:v1"
+    container_name: configserverms
+    platform: linux/amd64
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: "curl --fail --silent localhost:8888/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    extends:
+      file: common-config.yml
+      service: microservice-base-config
+
+
+  eurekaserver:
+    image: "keskink/eurekaserver:v1"
+    container_name: eurekaserverms
+    platform: linux/amd64
+    ports:
+      - "8761:8761"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    healthcheck:
+      test: "curl --fail --silent localhost:8761/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    extends:
+      file: common-config.yml
+      service: microservice-base-config
+    environment:
+      SPRING_APPLICATION_NAME: "eurekaserver"
+      SERVER_PORT: 8761
+
+  bookings:
+    image: "keskink/bookingservice:v1"
+    container_name: bookingms
+    platform: linux/amd64
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: "curl --fail --silent localhost:8080/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      SPRING_APPLICATION_NAME: "bookingservice"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://bookingdb:3306/bookingdb"
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    depends_on:
+      configserver:
+        condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
+    extends:
+      file: common-config.yml
+      service: microservice-eureka-config
+
+  notifications:
+    image: "keskink/notificationservice:v1"
+    container_name: notificationms
+    platform: linux/amd64
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: "curl --fail --silent localhost:8090/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      SPRING_APPLICATION_NAME: "notificationservice"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://notificationdb:3306/notificationdb"
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    depends_on:
+      configserver:
+        condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
+    extends:
+      file: common-config.yml
+      service: microservice-eureka-config
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli ping | grep PONG" ]
+      timeout: 10s
+      retries: 10
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+  gatewayserver:
+    image: "keskink/gatewayserver:v1"
+    container_name: gatewayserverms
+    ports:
+      - "8070:8070"
+    healthcheck:
+      test: "curl --fail --silent localhost:8070/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      bookings:
+        condition: service_healthy
+      notifications:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: "gatewayserver"
+      SERVER_PORT: 8070
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8888/
+      SPRING_DATA_REDIS_CONNECT-TIMEOUT: 2s
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_TIMEOUT: 1s
+    extends:
+      file: common-config.yml
+      service: microservice-eureka-config
+
+
+networks:
+  bookingapp:
+    driver: "bridge"
+
+
+
