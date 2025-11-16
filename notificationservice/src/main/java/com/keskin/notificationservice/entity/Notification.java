@@ -19,6 +19,9 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "booking_id")
+    private Long bookingId;
+
     @Column(name = "user_name", nullable = false)
     private String userName;
 
@@ -29,14 +32,6 @@ public class Notification {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "status", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private NotificationStatus status;
-
-    @PrePersist
-    public void prePersist() {
-        if (status == null) {
-            status = NotificationStatus.PENDING;
-        }
-    }
+    @Column(name = "status")
+    private String status;
 }

@@ -17,4 +17,5 @@ public interface IBookingService {
      boolean updateBooking(Long id, UpdateBookingRequestDto requestDto);
 
     boolean deleteBooking(Long id);
+
 }

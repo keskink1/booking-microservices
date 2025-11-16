@@ -1,6 +1,5 @@
 package com.keskin.notificationservice.mapper;
 
-import com.keskin.notificationservice.dto.CreateNotificationRequestDto;
 import com.keskin.notificationservice.dto.NotificationDto;
 import com.keskin.notificationservice.entity.Notification;
 import org.mapstruct.Mapper;
@@ -12,5 +11,4 @@ public interface NotificationMapper {
 
     Notification toEntity(NotificationDto dto);
 
-    Notification createRequestToEntity(CreateNotificationRequestDto requestDto);
 }

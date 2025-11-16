@@ -38,14 +38,13 @@ public class GatewayserverApplication {
 	public RouteLocator keskinkRouteConfig(RouteLocatorBuilder builder) {
 		return builder.routes()
 
+				// --- BOOKINGSERVICE route ---
 				.route("booking-route", r -> r
 						.path("/api/bookings/**")
 						.filters(f -> f
-								// optional: rewrite path so backend receives trimmed path
-								.rewritePath("/api/bookings/(?<segment>.*)", "/${segment}")
 								.circuitBreaker(c -> c
 										.setName("bookingCircuitBreaker")
-										.setFallbackUri("forward:/bookingServiceFallback"))
+										.setFallbackUri("forward:/fallback/bookings"))
 								.retry(retryConfig -> retryConfig
 										.setRetries(3)
 										.setMethods(HttpMethod.GET)
@@ -56,13 +55,13 @@ public class GatewayserverApplication {
 						)
 						.uri("lb://BOOKINGSERVICE"))
 
+				// --- NOTIFICATIONSERVICE route ---
 				.route("notification-route", r -> r
 						.path("/api/notifications/**")
 						.filters(f -> f
-								.rewritePath("/api/notifications/(?<segment>.*)", "/${segment}")
 								.circuitBreaker(c -> c
 										.setName("notificationCircuitBreaker")
-										.setFallbackUri("forward:/notificationServiceFallback"))
+										.setFallbackUri("forward:/fallback/notifications"))
 								.retry(retryConfig -> retryConfig
 										.setRetries(3)
 										.setMethods(HttpMethod.GET)
@@ -75,6 +74,7 @@ public class GatewayserverApplication {
 
 				.build();
 	}
+
 
 	/**
 	 * Default Resilience4J configuration used by circuit breakers.
@@ -91,12 +91,17 @@ public class GatewayserverApplication {
 	}
 
 	/**
-	 * RedisRateLimiter: replenishRate = 5 tokens/sec, burstCapacity = 10.
-	 * (requestedTokens param omitted - default 1)
+	 * RedisRateLimiter bean configuration.
+	 * Limits the number of requests per key (IP) using Redis.
+	 *     replenishRate = 1 → adds 1 token per second
+	 *     burstCapacity = 1 → maximum of 1 token can be accumulated
+	 *     requestedTokens = 1 → each request consumes 1 token
+	 * With this configuration, only 1 request per second per key is allowed.
+	 * Requests exceeding the available token will receive a 429 (Too Many Requests) response.
 	 */
 	@Bean
-	public RedisRateLimiter redisRateLimiter() {
-		return new RedisRateLimiter(5, 10);
+	public RedisRateLimiter redisRateLimiter(){
+		return new RedisRateLimiter(1,1,1);
 	}
 
 	/**

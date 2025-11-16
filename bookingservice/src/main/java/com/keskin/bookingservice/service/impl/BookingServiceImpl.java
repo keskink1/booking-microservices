@@ -9,6 +9,9 @@ import com.keskin.bookingservice.mapper.BookingMapper;
 import com.keskin.bookingservice.repository.BookingRepository;
 import com.keskin.bookingservice.service.IBookingService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +24,23 @@ import java.util.stream.Collectors;
 @Transactional
 public class BookingServiceImpl implements IBookingService {
 
+    private static final Logger log = LoggerFactory.getLogger(BookingServiceImpl.class);
+
     private final BookingRepository bookingRepository;
     private final BookingMapper bookingMapper;
+    private final StreamBridge streamBridge;
 
     @Override
     public BookingDto createBooking(CreateBookingRequestDto requestDto) {
-        Booking booking = bookingMapper.createRequestToEntity(requestDto);
-        Booking saved = bookingRepository.save(booking);
 
-        return bookingMapper.toDto(saved);
+        Booking booking = bookingMapper.createRequestToEntity(requestDto);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        log.info("Creating event");
+        boolean result = streamBridge.send("sendMail-out-0", savedBooking);
+        log.info("BookingCreated event published? : {}", result);
+
+        return bookingMapper.toDto(savedBooking);
     }
 
     @Override

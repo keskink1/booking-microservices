@@ -1,9 +1,8 @@
 package com.keskin.notificationservice.service.impl;
 
-import com.keskin.notificationservice.dto.CreateNotificationRequestDto;
+import com.keskin.notificationservice.dto.BookingMsgDto;
 import com.keskin.notificationservice.dto.NotificationDto;
 import com.keskin.notificationservice.entity.Notification;
-import com.keskin.notificationservice.entity.NotificationStatus;
 import com.keskin.notificationservice.exceptions.ResourceNotFoundException;
 import com.keskin.notificationservice.repository.NotificationRepository;
 import com.keskin.notificationservice.service.INotificationService;
@@ -12,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,10 +25,30 @@ public class NotificationServiceImpl implements INotificationService {
     private final NotificationMapper notificationMapper;
 
     @Override
-    public NotificationDto createNotification(CreateNotificationRequestDto requestDto) {
-        Notification notification = notificationMapper.createRequestToEntity(requestDto);
-        Notification saved = notificationRepository.save(notification);
-        return notificationMapper.toDto(saved);
+    public NotificationDto createNotification(BookingMsgDto bookingMsgDto) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+        String formattedDate = bookingMsgDto.appointmentTime().format(formatter);
+
+        Notification notification = Notification.builder()
+                .bookingId(bookingMsgDto.id())
+                .userName(bookingMsgDto.userName())
+                .message("Booking created for " + bookingMsgDto.email() +
+                        " at " + formattedDate)
+                .status(bookingMsgDto.status())
+                .build();
+
+        Notification savedNotification = notificationRepository.save(notification);
+
+        NotificationDto notificationDto = new NotificationDto(
+                savedNotification.getId(),
+                savedNotification.getBookingId(),
+                savedNotification.getUserName(),
+                savedNotification.getMessage(),
+                savedNotification.getStatus(),
+                savedNotification.getCreatedAt()
+        );
+
+        return notificationDto;
     }
 
     @Override

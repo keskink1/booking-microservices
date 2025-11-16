@@ -1,32 +1,51 @@
 services:
+  rabbit:
+    image: rabbitmq:3.12-management
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+
   bookingdb:
     container_name: bookingdb
     platform: linux/amd64
+    image: postgres:15
     ports:
-      - 3330:3306
+      - 5440:5432
     volumes:
-      - ./mysql-init/booking:/docker-entrypoint-initdb.d
+      - ./postgres-init/booking:/docker-entrypoint-initdb.d
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: bookingdb
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: bookingdb
     extends:
       file: common-config.yml
-      service: base-mysql-network-config
+      service: base-postgres-network-config
+
 
   notificationdb:
     container_name: notificationdb
     platform: linux/amd64
+    image: postgres:15
     ports:
-      - 3331:3306
+      - 5441:5432
     volumes:
-      - ./mysql-init/notification:/docker-entrypoint-initdb.d
+      - ./postgres-init/notification:/docker-entrypoint-initdb.d
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: notificationdb
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: notificationdb
     extends:
       file: common-config.yml
-      service: base-mysql-network-config
-
+      service: base-postgres-network-config
 
   configserver:
     image: "keskink/configserver:v1"
@@ -81,13 +100,14 @@ services:
       start_period: 10s
     environment:
       SPRING_APPLICATION_NAME: "bookingservice"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://bookingdb:3306/bookingdb"
-      SPRING_DATASOURCE_USERNAME: root
+      SPRING_RABBITMQ_HOST: "rabbit"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://bookingdb:5432/bookingdb"
+      SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: root
     depends_on:
-      configserver:
+      rabbit:
         condition: service_healthy
-      eurekaserver:
+      bookingdb:
         condition: service_healthy
     extends:
       file: common-config.yml
@@ -107,13 +127,14 @@ services:
       start_period: 10s
     environment:
       SPRING_APPLICATION_NAME: "notificationservice"
-      SPRING_DATASOURCE_URL: "jdbc:mysql://notificationdb:3306/notificationdb"
-      SPRING_DATASOURCE_USERNAME: root
+      SPRING_RABBITMQ_HOST: "rabbit"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://notificationdb:5432/notificationdb"
+      SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: root
     depends_on:
-      configserver:
+      rabbit:
         condition: service_healthy
-      eurekaserver:
+      notificationdb:
         condition: service_healthy
     extends:
       file: common-config.yml
@@ -134,6 +155,7 @@ services:
   gatewayserver:
     image: "keskink/gatewayserver:v1"
     container_name: gatewayserverms
+    platform: linux/amd64
     ports:
       - "8070:8070"
     healthcheck:
@@ -160,6 +182,19 @@ services:
     extends:
       file: common-config.yml
       service: microservice-eureka-config
+
+  message:
+    image: "keskink/message:v1"
+    container_name: messagems
+    platform: linux/amd64
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    environment:
+      SPRING_RABBITMQ_HOST: "rabbit"
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
 
 
 networks:

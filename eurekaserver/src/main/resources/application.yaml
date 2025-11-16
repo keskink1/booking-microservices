@@ -1,3 +1,6 @@
+server:
+  port: 8761
+
 logging:
   level:
     sun.rmi.transport.tcp: error
@@ -28,3 +31,4 @@ management:
     health:
       probes:
         enabled: true
+

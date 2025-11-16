@@ -9,19 +9,33 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
+@Tag(name = "Booking Controller", description = "Endpoints for managing bookings")
 public class BookingController {
 
     private final IBookingService bookingService;
     private final BookingContactInfoDto bookingContactInfoDto;
 
+    @GetMapping("/test")
+    @Operation(summary = "Test Booking Service", description = "Returns a test message after 5 seconds delay")
+    public Mono<String> testBooking() {
+        return Mono.delay(Duration.ofSeconds(5))
+                .map(t -> "Booking service is working");
+    }
+
     @PostMapping("/create")
+    @Operation(summary = "Create Booking", description = "Create a new booking")
     public ResponseEntity<ApiResponse<BookingDto>> createBooking(
             @Valid @RequestBody CreateBookingRequestDto requestDto,
             UriComponentsBuilder uriBuilder
@@ -43,6 +57,7 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get Booking by ID", description = "Fetch a single booking by its ID")
     public ResponseEntity<ApiResponse<BookingDto>> getBooking(@PathVariable Long id) {
         BookingDto booking = bookingService.getBookingById(id);
 
@@ -56,6 +71,7 @@ public class BookingController {
     }
 
     @GetMapping("/all")
+    @Operation(summary = "Get All Bookings", description = "Fetch all bookings")
     public ResponseEntity<ApiResponse<List<BookingDto>>> getAllBookings() {
         List<BookingDto> bookings = bookingService.getAllBookings();
 
@@ -69,6 +85,7 @@ public class BookingController {
     }
 
     @PutMapping("/update/{id}")
+    @Operation(summary = "Update Booking", description = "Update a booking by its ID")
     public ResponseEntity<ApiResponse<BookingDto>> updateBooking(
             @PathVariable Long id,
             @Valid @RequestBody UpdateBookingRequestDto requestDto
@@ -95,6 +112,7 @@ public class BookingController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @Operation(summary = "Delete Booking", description = "Delete a booking by its ID")
     public ResponseEntity<ApiResponse<Boolean>> deleteBooking(@PathVariable Long id) {
         boolean deleted = bookingService.deleteBooking(id);
 
@@ -117,6 +135,7 @@ public class BookingController {
     }
 
     @GetMapping("/contact-info")
+    @Operation(summary = "Get Contact Info", description = "Fetch contact information for the booking service")
     public ResponseEntity<BookingContactInfoDto> getContactInfo() {
         return ResponseEntity
                 .status(HttpStatus.OK)
