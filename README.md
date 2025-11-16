@@ -99,8 +99,4 @@ Content-Type: application/json
 {
   "appointmentTime": "2025-12-02T15:00:00"
 }
-<<<<<<< HEAD
 ```
-=======
-```
->>>>>>> eb1964f8d412bbafe2b4340be7f731248e754363
